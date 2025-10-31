@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>vido Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* Basic layout */
+    :root {
+      --brand: #14867B;
+      --muted: #f2f2f2;
+      --card: #ffffff;
+      --accent: #B9A1E4;
+      --danger: #e74c3c;
+      --shadow: rgba(0,0,0,0.12);
+    }
+    html,body{height:100%;}
+    body {
+      margin: 0;
+      background: var(--brand);
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #fff;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding-bottom: 20px;
+    
+    }
+    .container { max-width:420px; padding: 16px; box-sizing: border-box; }
+    .profile-bar { display:flex; align-items:center; margin-top:28px; }
+    .icon { width:44px; height:44px; border-radius:50%; background:#fff; color:var(--brand); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:20px; margin-right:12px; }
+    .user-name { font-size:1.2rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+    .add-contact-btn { margin-top:30px; width:100%; padding:14px 0; background:var(--accent); color:#fff; border:none; border-radius:26px; font-size:1.05rem; font-weight:700; letter-spacing:1px; cursor:pointer; }
+    .contacts-list { margin-top:24px; }
+    .contact-item { display:flex; align-items:center; justify-content:space-between; background:#fff; color:var(--brand); border-radius:14px; padding:12px 14px; margin-bottom:12px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px var(--shadow); }
+    .contact-item:hover { transform: translateY(-2px); transition: all .12s ease; }
+
+    /* Modal */
+    .modal, .overlay { position:fixed; left:0; top:0; width:100%; height:100%; z-index:995; display:flex; align-items:center; justify-content:center; background: rgba(20,134,123,0.96); margin-right:10px,; }
+    .modal-box { margin:10px; background:var(--card); color:#18322b; border-radius:18px; padding:22px; width:92%; max-width:360px; text-align:center; box-shadow:0 10px 30px var(--shadow); }
+    .modal-box h2 { color:var(--brand); margin:6px 0 18px; }
+    .modal-box input { width:80%; border:none; background:#eef3f2; padding:10px 12px; border-radius:12px; font-weight:700; color:var(--brand); text-align:center; } 
+    .modal-btn, .close-btn { width:86%; padding:10px 0; border-radius:12px; border:none; margin-top:12px; font-weight:700; cursor:pointer; }
+    .modal-btn { background: #4CAF50; color:#fff; }
+    .close-btn { background: #eb7676; color:#fff; }
+
+    
+    /* Video area (card) */
+    .video-area {
+      background: #fff;
+      border-radius:24px;
+      width:98%;
+      max-width:420px;
+      min-height:480px;
+      margin:18px auto 0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-end;
+      padding-bottom:20px;
+      box-shadow:0 8px 28px var(--shadow);
+      box-sizing:border-box;
+      color: #222;
+    }
+    .video-shell {
+      width:92%;
+      aspect-ratio: 3/4;
+      background: #f6f6f6;
+      border-radius:16px;
+      margin-top:20px;
+      position:relative;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+    .remote-video {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      background:#ddd;
+      border-radius:12px;
+    }
+    .local-video {
+      position:absolute;
+      top:12px;
+      right:12px;
+      width:78px;
+      height:64px;
+      border-radius:10px;
+      object-fit:cover;
+      background:#bdbdbd;
+      border:2px solid #fff;
+      z-index:3;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+
+    /* Call action buttons (only 3 now) */
+    .call-actions-row {
+      width:96%;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-top:18px;
+      padding: 12px 6px 0 6px;
+      box-sizing:border-box;
+    }
+    .call-action-btn {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      width:64px;
+      height:64px;
+      background:var(--muted);
+      border:none;
+      border-radius:50%;
+      color:#333;
+      font-size:1.2rem;
+      cursor:pointer;
+      box-shadow:0 6px 18px rgba(0,0,0,0.06);
+      outline:none;
+    }
+    .call-action-btn.end { background: var(--danger); color:#fff; width:72px; height:72px; }
+    .call-action-icon { font-size:1.4rem; line-height:1; }
+    .call-action-label { font-size:0.76rem; margin-top:6px; letter-spacing:0.6px; color:inherit; }
+
+    /* Calling / Incoming overlays */
+    .overlay-screen {
+      position:fixed;
+      left:0; top:0;
+      width:100%; height:100%;
+      display:flex;
+      align-items:center; justify-content:center;
+      z-index:999;
+      background: linear-gradient(180deg, rgba(20,134,123,0.95), rgba(20,134,123,0.9));
+      color:#fff;
+      padding:16px;
+      box-sizing:border-box;
+    }
+    .call-card {
+      height:flex;
+      width:94%;
+      max-width:400px;
+      background: rgba(255,255,255,0.06);
+      border-radius:16px;
+      padding:18px;
+      text-align:center;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+    .call-card h3 { margin:6px 0 12px; font-size:1.15rem; letter-spacing:1px; text-transform:uppercase; }
+    .call-status { font-size:0.98rem; opacity:0.95; margin-bottom:14px; }
+
+    .incoming-controls { display:flex; gap:12px; justify-content:center; margin-top:12px; }
+    .accept-btn, .reject-btn {
+      padding:10px 16px; border-radius:12px; border:none; font-weight:700; cursor:pointer; min-width:110px;
+    }
+    .accept-btn { background:#4CAF50; color:#fff; }
+    .reject-btn { background:#eb7676; color:#fff; }
+
+    /* Small screens tweak */
+    @media (max-width:420px){
+      .video-area { min-height:430px; }
+      .local-video { width:64px; height:54px; top:8px; right:8px; }
+      .call-action-btn { width:56px; height:56px; }
+      .call-action-btn.end { width:64px; height:64px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HOME PAGE -->
+  <div class="container" id="home-page">
+    <div class="profile-bar">
+      <div class="icon" id="profile-icon">&#128100;</div>
+      <div id="userNameDisplay" class="user-name"></div>
+    </div>
+
+    <button id="addContactBtn" class="add-contact-btn">ADD NEW CONTACT</button>
+    <div id="contactsList" class="contacts-list"></div>
+  </div>
+
+  <!-- Add Contact Modal -->
+  <div id="add-contact-modal" class="modal" style="display:none;">
+    <div class="modal-box">
+      <h2>ADD CONTACT</h2>
+      <input type="text" id="newContactInput" maxlength="20" placeholder="ADD FRIEND NAME" style="text-transform:uppercase;">
+      <button class="modal-btn" id="addContactConfirmBtn">ADD</button>
+      <button class="close-btn" id="closeAddContactBtn">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- Edit Name Modal -->
+  <div id="edit-name-modal" class="modal" style="display:none;">
+    <div class="modal-box">
+      <h2>EDIT PROFILE NAME</h2>
+      <input type="text" id="editNameInput" maxlength="20" placeholder="TYPE NEW NAME" style="text-transform:uppercase;">
+      <button class="modal-btn" id="editNameConfirmBtn">SAVE</button>
+      <button class="close-btn" id="closeEditNameBtn">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- VIDEO / CALL SCREEN -->
+  <div id="call-screen" style="display:none;">
+    <div class="video-area">
+      <div class="video-shell">
+        <video id="remote-video" class="remote-video" autoplay playsinline></video>
+        <video id="local-video" class="local-video" autoplay muted playsinline></video>
+      </div>
+
+      <!-- Only 3 buttons: End, Mute, Camera -->
+      <div class="call-actions-row">
+        <button class="call-action-btn end" id="endCallBtn">
+          <span class="call-action-icon">&#128222;</span>
+          <div class="call-action-label">End</div>
+        </button>
+
+        <button class="call-action-btn" id="muteBtn">
+          <span class="call-action-icon" id="muteIcon">&#128263;</span>
+          <div class="call-action-label">Mute</div>
+        </button>
+
+        <button class="call-action-btn" id="cameraBtn">
+          <span class="call-action-icon" id="cameraIcon">&#128247;</span>
+          <div class="call-action-label">Camera</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OUTGOING "CALLING" SCREEN (retries every 5s) -->
+  <div id="calling-overlay" class="overlay-screen" style="display:none;">
+    <div class="call-card">
+      <h3 id="callingToName">Calling...</h3>
+      <div class="call-status" id="callingStatus">Trying to connect — please wait</div>
+      <div style="margin-top:12px;">
+      <center>  <button class="call-action-btn end" id="callingEndBtn" style="width:66px;height:66px;">
+          <span style="font-size:1.05rem;">&#128222;</span>
+          <div style="font-size:12px;margin-top:4px;color:#fff;">End</div>
+        </button></center>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOMING "RECEIVING" SCREEN -->
+  <div id="incoming-overlay" class="overlay-screen" style="display:none;">
+    <div class="call-card">
+      <h3 id="incomingFromName">Incoming call</h3>
+      <div class="call-status" id="incomingHint">Incoming call — tap Accept to answer</div>
+      <div class="incoming-controls">
+        <button class="accept-btn" id="acceptCallBtn">ACCEPT</button>
+        <button class="reject-btn" id="rejectCallBtn">REJECT</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+  <script>
+    // ---------- Storage helpers ----------
+    function setStorage(key, value) {
+      localStorage.setItem(key, value);
+      document.cookie = key + '=' + encodeURIComponent(value) + '; path=/';
+    }
+    function getStorage(key) {
+      let v = localStorage.getItem(key);
+      if (v) return v;
+      let match = document.cookie.match(new RegExp(key + '=([^;]+)'));
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    // ---------- Globals ----------
+    let localStream = null;
+    let peer = null;
+    let userName = null;
+    let currentCall = null;          // active in-call PeerJS call object
+    let incomingCall = null;         // call object when there's an incoming ring (not answered yet)
+    let outgoingRetryTimer = null;   // interval id for retrying outgoing call
+    let outgoingAttempting = false;  // whether a retry attempt is in progress
+
+    // ---------- Media ----------
+    async function getLocalMediaStream() {
+      if (localStream) return localStream;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setLocalVideo(localStream);
+        return localStream;
+      } catch (err) {
+        console.error("Failed to get local stream", err);
+        alert("Please allow camera and microphone access to use Delta Meet.");
+        return null;
+      }
+    }
+    function setLocalVideo(stream) {
+      let video = document.getElementById('local-video');
+      if (!video) return;
+      video.srcObject = stream;
+      video.muted = true;
+      video.play().catch(()=>{});
+    }
+    function setRemoteVideo(stream) {
+      let video = document.getElementById('remote-video');
+      if (!video) return;
+      video.srcObject = stream;
+      video.muted = false;
+      video.play().catch(()=>{});
+    }
+
+    // ---------- PeerJS setup ----------
+    function initializePeer() {
+      if (peer && peer.open) {
+        console.log("Peer already initialized", peer.id);
+        return;
+      }
+      if (!userName) {
+        console.warn("Cannot initialize Peer without a userName.");
+        return;
+      }
+      const roomId = "ROOM_" + userName;
+      if (peer && !peer.destroyed) peer.destroy();
+      peer = new Peer(roomId);
+      peer.on('open', function(id) {
+        console.log("My peer ID is", id);
+      });
+
+      // Incoming call handler — show incoming screen, do NOT auto-answer
+      peer.on('call', async function(call) {
+        console.log("Incoming call from", call.peer);
+        // If we already have an active in-call, reject new incoming immediately
+        if (currentCall) {
+          console.log("Already in active call — rejecting new incoming.");
+          try { call.close(); } catch(e){}
+          return;
+        }
+        // If there's already an incoming ringing call object, close it
+        if (incomingCall && incomingCall !== call) {
+          try { incomingCall.close(); } catch(e){}
+          incomingCall = null;
+        }
+
+        incomingCall = call;
+        const callerName = extractNameFromRoomId(call.peer);
+        showIncomingOverlay(callerName);
+
+        // bind a close handler in case caller cancels before we press accept/reject
+        call.on('close', function() {
+          console.log("Incoming call closed before answer");
+          incomingCall = null;
+          hideIncomingOverlay();
+        });
+        call.on('error', function(err) {
+          console.error("Incoming call error", err);
+          incomingCall = null;
+          hideIncomingOverlay();
+        });
+      });
+
+      peer.on('error', function(err) {
+        console.error("PeerJS error", err);
+        if (err && err.type === 'unavailable-id') {
+          alert("The username " + userName + " is already in use by another device or session. Please choose a different name or close other tabs.");
+          showEditNameModal(false);
+        } else {
+          // small retry for network errors
+          console.warn("PeerJS connection error", err);
+          // do not aggressively reload; attempt re-init later
+          setTimeout(function(){ initializePeer(); }, 3000);
+        }
+      });
+    }
+
+    // ---------- Call flow ----------
+
+    // Start outgoing call and set up retry every 5 seconds
+    async function startCall(contact) {
+      if (!peer || !peer.open) {
+        alert("Your connection isn't ready. Please wait a moment or set your name.");
+        return;
+      }
+      if (currentCall || incomingCall) {
+        alert("You're busy with another call. End or reject existing calls first.");
+        return;
+      }
+
+      const remoteRoomId = "ROOM_" + contact.toUpperCase();
+      const displayName = contact.toUpperCase();
+
+      // Show calling UI
+      showCallingOverlay(displayName);
+      // Ensure any previous timers are cleared
+      clearOutgoingRetry();
+
+      // Immediately attempt a call, then schedule retries every 5 seconds
+      await attemptOutgoingCall(remoteRoomId, displayName);
+
+      outgoingRetryTimer = setInterval(function(){
+        if (!currentCall && !incomingCall) {
+          attemptOutgoingCall(remoteRoomId, displayName);
+        } else {
+          // If someone answered/incoming set or active, stop retrying
+          clearOutgoingRetry();
+        }
+      }, 5000);
+    }
+
+    // Attempt one outgoing call (one-shot). If failure, call.on('error') will run.
+    async function attemptOutgoingCall(remoteRoomId, displayName) {
+      if (outgoingAttempting) {
+        return; // already trying
+      }
+      outgoingAttempting = true;
+      try {
+        const stream = await getLocalMediaStream();
+        if (!stream) {
+          outgoingAttempting = false;
+          return;
+        }
+        console.log("Attempting call to", remoteRoomId);
+        const call = peer.call(remoteRoomId, stream);
+        // store as temporary currentCallCandidate until connected
+        // set handlers for the call
+        call.on('stream', function(remoteStream) {
+          console.log("Outgoing call connected; received remote stream.");
+          // clear retries
+          clearOutgoingRetry();
+          currentCall = call;
+          setRemoteVideo(remoteStream);
+          hideCallingOverlay();
+          showCallScreen();
+        });
+        call.on('close', function() {
+          console.log("Outgoing call closed");
+          if (currentCall === call) currentCall = null;
+          // if call closed before connecting, keep retrying (interval still runs)
+        });
+        call.on('error', function(err) {
+          console.warn("Outgoing call error", err && err.message);
+          // leave retry running; user can end from calling overlay
+        });
+      } catch (err) {
+        console.error("Attempt outgoing call failed:", err);
+      } finally {
+        outgoingAttempting = false;
+      }
+    }
+
+    function clearOutgoingRetry() {
+      if (outgoingRetryTimer) {
+        clearInterval(outgoingRetryTimer);
+        outgoingRetryTimer = null;
+      }
+      outgoingAttempting = false;
+      // Hide calling overlay if no currentCall and not incoming
+      // (But keep overlay visible until user explicitly ends call)
+    }
+
+    // Accept incoming call (user pressed ACCEPT)
+    async function acceptIncomingCall() {
+      if (!incomingCall) return;
+      // If already in active call, refuse
+      if (currentCall) {
+        try { incomingCall.close(); } catch(e){}
+        incomingCall = null;
+        hideIncomingOverlay();
+        return;
+      }
+
+      const call = incomingCall; // save
+      incomingCall = null;
+      hideIncomingOverlay();
+
+      const stream = await getLocalMediaStream();
+      if (!stream) {
+        // couldn't get camera/mic
+        try { call.close(); } catch(e){}
+        return;
+      }
+
+      try {
+        call.answer(stream);
+      } catch (e) {
+        console.error("Failed to answer call:", e);
+        try { call.close(); } catch(e){}
+        return;
+      }
+
+      // Now this call becomes the current active call
+      currentCall = call;
+
+      call.on('stream', function(remoteStream) {
+        console.log("Answered — got remote stream");
+        setRemoteVideo(remoteStream);
+        showCallScreen();
+      });
+      call.on('close', function() {
+        console.log("Call ended by other side");
+        endCurrentCall();
+      });
+      call.on('error', function(err) {
+        console.error("Call error after answer", err);
+        endCurrentCall();
+      });
+    }
+
+    // Reject incoming call
+    function rejectIncomingCall() {
+      if (!incomingCall) return;
+      try { incomingCall.close(); } catch(e){}
+      incomingCall = null;
+      hideIncomingOverlay();
+    }
+
+    // End current call (caller or callee)
+    function endCurrentCall() {
+      // Clear outgoing retry attempts if any
+      clearOutgoingRetry();
+
+      if (currentCall) {
+        try { currentCall.close(); } catch (e) {}
+        currentCall = null;
+      }
+      if (incomingCall) {
+        try { incomingCall.close(); } catch (e) {}
+        incomingCall = null;
+      }
+      if (localStream) {
+        try {
+          localStream.getTracks().forEach(t => t.stop());
+        } catch(e){}
+        localStream = null;
+      }
+      // Reset video elements
+      document.getElementById('local-video').srcObject = null;
+      document.getElementById('remote-video').srcObject = null;
+
+      // reset UI
+      hideCallingOverlay();
+      hideIncomingOverlay();
+      resetCallUI();
+      showHome();
+
+      // Preserve your previous behavior: destroy peer then reinitialize after short delay
+      if (peer && !peer.destroyed) {
+        try { peer.destroy(); } catch(e){}
+      }
+      setTimeout(function(){ initializePeer(); }, 300);
+    }
+
+    // ---------- Utilities ----------
+    function extractNameFromRoomId(roomId) {
+      if (!roomId) return "UNKNOWN";
+      return roomId.replace(/^ROOM_/, '') || roomId;
+    }
+
+    // ---------- UI helpers ----------
+    function showHome() {
+      document.getElementById('home-page').style.display = '';
+      document.getElementById('call-screen').style.display = 'none';
+    }
+    function showCallScreen() {
+      document.getElementById('home-page').style.display = 'none';
+      document.getElementById('call-screen').style.display = 'flex';
+    }
+
+    // Calling overlay
+    function showCallingOverlay(name) {
+      document.getElementById('callingToName').innerText = 'Calling ' + (name || 'USER');
+      document.getElementById('callingStatus').innerText = 'Trying to connect — please wait';
+      document.getElementById('calling-overlay').style.display = 'flex';
+      // show small local preview if available
+      showCallScreen(); // display video layout under overlay
+    }
+    function hideCallingOverlay() {
+      document.getElementById('calling-overlay').style.display = 'none';
+    }
+
+    // Incoming overlay
+    function showIncomingOverlay(callerName) {
+      document.getElementById('incomingFromName').innerText = 'Incoming call from ' + (callerName || 'USER');
+      document.getElementById('incomingHint').innerText = 'Tap Accept to answer or Reject to ignore';
+      document.getElementById('incoming-overlay').style.display = 'flex';
+      // show home behind it (so user can still see profile)
+      document.getElementById('home-page').style.display = '';
+      document.getElementById('call-screen').style.display = 'none';
+    }
+    function hideIncomingOverlay() {
+      document.getElementById('incoming-overlay').style.display = 'none';
+    }
+
+    // Reset call UI visuals
+    let isMuted = false;
+    let cameraOn = true;
+    function resetCallUI() {
+      isMuted = false;
+      cameraOn = true;
+      document.getElementById('muteIcon').innerHTML = '🔊';
+      document.getElementById('muteBtn').querySelector('.call-action-label').innerText = 'Mute';
+      document.getElementById('cameraIcon').innerHTML = '📷';
+      document.getElementById('cameraBtn').querySelector('.call-action-label').innerText = 'Camera';
+    }
+
+    // ---------- Basic contact/name UI ----------
+    function showUserName() {
+      userName = getStorage('userName');
+      if (!userName) {
+        showEditNameModal(true);
+      } else {
+        document.getElementById('userNameDisplay').innerText = userName.toUpperCase();
+        initializePeer();
+      }
+    }
+    function saveUserName(newName) {
+      const oldUserName = userName;
+      setStorage('userName', newName.toUpperCase());
+      userName = newName.toUpperCase();
+      document.getElementById('userNameDisplay').innerText = userName;
+      hideEditNameModal();
+      if (oldUserName !== userName) {
+        initializePeer();
+      }
+    }
+
+    function loadContacts() {
+      let contacts = JSON.parse(getStorage('contacts') || "[]");
+      let div = document.getElementById('contactsList');
+      div.innerHTML = '';
+      if (contacts.length === 0) {
+        div.innerHTML = '<p style="text-align:center;color:#e6f2ef;margin-top:18px;">No contacts yet. Add some!</p>';
+      }
+      contacts.forEach((contact) => {
+        let el = document.createElement('div');
+        el.className = "contact-item";
+        el.innerText = contact.toUpperCase();
+        el.onclick = function() { startCall(contact); };
+        div.appendChild(el);
+      });
+    }
+    function addContact(name) {
+      if (!name || !name.trim()) return;
+      let contacts = JSON.parse(getStorage('contacts') || "[]");
+      const up = name.trim().toUpperCase();
+      if (contacts.includes(up)) { alert("Contact already exists!"); return; }
+      contacts.push(up);
+      setStorage('contacts', JSON.stringify(contacts));
+      loadContacts();
+      hideAddContactModal();
+    }
+
+    // ---------- Buttons & event bindings ----------
+
+    // Call action buttons
+    document.getElementById('endCallBtn').onclick = function(){ endCurrentCall(); };
+    document.getElementById('callingEndBtn').onclick = function(){ endCurrentCall(); };
+
+    // Mute/unmute microphone
+    document.getElementById('muteBtn').onclick = function() {
+      if (localStream) {
+        isMuted = !isMuted;
+        localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+        document.getElementById('muteIcon').innerHTML = isMuted ? '🔇' : '🔊';
+        this.querySelector('.call-action-label').innerText = isMuted ? 'Unmute' : 'Mute';
+      } else {
+        alert("No local stream available. Allow camera/mic or start a call.");
+      }
+    };
+
+    // Camera toggle
+    document.getElementById('cameraBtn').onclick = function() {
+      if (localStream) {
+        cameraOn = !cameraOn;
+        localStream.getVideoTracks().forEach(t => t.enabled = cameraOn);
+        document.getElementById('cameraIcon').innerHTML = cameraOn ? '📷' : '🚫';
+        this.querySelector('.call-action-label').innerText = cameraOn ? 'Camera' : 'Off';
+      } else {
+        alert("No local stream available. Allow camera/mic or start a call.");
+      }
+    };
+
+    // Incoming accept/reject
+    document.getElementById('acceptCallBtn').onclick = function(){ acceptIncomingCall(); };
+    document.getElementById('rejectCallBtn').onclick = function(){ rejectIncomingCall(); };
+
+    // Add contact modal controls
+    document.getElementById('addContactBtn').onclick = function(){ showAddContactModal(); };
+    document.getElementById('closeAddContactBtn').onclick = function(){ hideAddContactModal(); };
+    document.getElementById('addContactConfirmBtn').onclick = function(){ addContact(document.getElementById('newContactInput').value); };
+
+    // Edit name modal
+    document.getElementById('profile-icon').onclick = function(){ showEditNameModal(false); };
+    document.getElementById('closeEditNameBtn').onclick = function(){ hideEditNameModal(); };
+    document.getElementById('editNameConfirmBtn').onclick = function(){
+      let val = document.getElementById('editNameInput').value.trim();
+      if (val) saveUserName(val);
+    };
+
+    // ---------- Modal helpers ----------
+    function showAddContactModal() {
+      document.getElementById('add-contact-modal').style.display = 'flex';
+      document.getElementById('newContactInput').value = '';
+    }
+    function hideAddContactModal() {
+      document.getElementById('add-contact-modal').style.display = 'none';
+    }
+    function showEditNameModal(first=false) {
+      document.getElementById('edit-name-modal').style.display = 'flex';
+      document.getElementById('editNameInput').value = first ? (getStorage('userName') || '') : '';
+    }
+    function hideEditNameModal() {
+      document.getElementById('edit-name-modal').style.display = 'none';
+    }
+
+    // ---------- Startup ----------
+    window.onload = function() {
+      showUserName();
+      loadContacts();
+      showHome();
+      resetCallUI();
+    };
+  </script>
+</body>
+</html>
